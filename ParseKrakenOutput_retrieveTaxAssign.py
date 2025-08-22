@@ -31,3 +31,7 @@ def main():
         sys.exit(1)
 
     KF.process_kraken2(args.i, args.o,ncbi)
+
+
+if __name__ == "__main__":
+    main()
