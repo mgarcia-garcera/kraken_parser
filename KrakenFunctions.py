@@ -66,7 +66,7 @@ def check_pair_consistency(r1, r2):
     coherent = (fam1 is not None and fam1 == fam2)
     return coherent
 
-def process_kraken2(input_file, output_file):
+def process_kraken2(input_file, output_file, ncbi):
     with open(input_file) as f, open(output_file, "w") as out:
         out.write("read_id\tLCA_R1\tbest_hit_R1\tfamily_R1\tLCA_R2\tbest_hit_R2\tfamily_R2\tpair_coherent\n")
 
@@ -75,18 +75,29 @@ def process_kraken2(input_file, output_file):
             if len(parts) < 5:
                 continue
 
-            read_id = parts[0]
+            read_id = parts[1]
             col5 = parts[4]
-
+            if "A:" in col5:
+                out.write(
+                    f"{read_id}\t"
+                    f"NA\t"
+                    f"NA\t"
+                    f"NA\t"
+                    f"NA\t"
+                    f"NA\t"
+                    f"NA\t"
+                    f"incoherent\n"
+                )
+                continue
             # split R1 / R2 by '|:|'
-            if "|:|" in col5:
+            elif "|:|" in col5:
                 col_R1, col_R2 = col5.split("|:|")
             else:
                 # if only one side provided, treat R2 as empty
                 col_R1, col_R2 = col5, ""
 
-            r1 = classify_read(col_R1.strip())
-            r2 = classify_read(col_R2.strip())
+            r1 = classify_read(col_R1.strip(),ncbi)
+            r2 = classify_read(col_R2.strip(),ncbi)
 
             coherent = check_pair_consistency(r1, r2)
 
@@ -100,3 +111,13 @@ def process_kraken2(input_file, output_file):
                 f"{r2['lineage'].get('family','NA')}\t"
                 f"{coherent}\n"
             )
+
+def extract_taxid_taxline(name, ncbi):
+    taxid = ncbi.get_name_translator([name])
+    if name in taxid:
+        tid = taxid[name][0]
+        # Get lineage for the TaxID
+        lineage = ncbi.get_lineage(tid)
+        # Translate lineage TaxIDs back to names
+        names = ncbi.get_taxid_translator(lineage)
+        return taxid, lineage, names
